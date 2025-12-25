@@ -5,14 +5,8 @@ import Header from "@/components/layout/Header";
 import TransactionsSidebar from "@/components/layout/TransactionsSidebar";
 import TransactionList from "@/components/transactions/TransactionList";
 import { Input } from "@/components/ui/input";
-
-const mockTransactions = [
-  { id: "1", sender: "المخازن", subject: "موضوع مهم", subjectPreview: "موضوع مهم", date: "2025-12-21" },
-  { id: "2", sender: "المكتبة", subject: "موضوع مهم", subjectPreview: "موضوع مهم", date: "2025-12-21", isNew: true },
-  { id: "3", sender: "المكتبة", subject: "موضوع مهم", subjectPreview: "موضوع مهم", date: "2025-12-20" },
-  { id: "4", sender: "مكتب عميد الكلية", subject: "موضوع مهم", subjectPreview: "موضوع مهم", date: "2025-12-19" },
-  { id: "5", sender: "وكيل الكلية لشئون التعليم والطلاب", subject: "موضوع مهم", subjectPreview: "موضوع مهم", date: "2025-12-18" },
-];
+import { useInbox } from "@/hooks/useInbox";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const typeLabels: Record<string, string> = {
   outgoing: "الصادرات",
@@ -22,10 +16,19 @@ const typeLabels: Record<string, string> = {
 };
 
 const Transactions = () => {
-  const { type = "outgoing" } = useParams();
+  const { type = "incoming" } = useParams();
   const [searchQuery, setSearchQuery] = useState("");
+  const { data: inboxData, isLoading, error } = useInbox();
 
-  const filteredTransactions = mockTransactions.filter(
+  const transactions = inboxData?.map((t) => ({
+    id: t.transaction_id.toString(),
+    sender: t.sender_name,
+    subject: t.subject,
+    subjectPreview: t.code,
+    date: new Date(t.date).toLocaleDateString("ar-EG"),
+  })) || [];
+
+  const filteredTransactions = transactions.filter(
     (t) =>
       t.sender.includes(searchQuery) ||
       t.subject.includes(searchQuery)
@@ -60,13 +63,25 @@ const Transactions = () => {
                 )}
               </div>
               
-              <h1 className="text-2xl font-bold">{typeLabels[type] || "الصادرات"}</h1>
+              <h1 className="text-2xl font-bold">{typeLabels[type] || "الواردات"}</h1>
             </div>
 
-            <TransactionList 
-              transactions={filteredTransactions}
-              basePath={`/transactions/${type}`}
-            />
+            {isLoading ? (
+              <div className="space-y-4">
+                {[...Array(5)].map((_, i) => (
+                  <Skeleton key={i} className="h-16 w-full" />
+                ))}
+              </div>
+            ) : error ? (
+              <div className="py-12 text-center text-destructive">
+                حدث خطأ في تحميل البيانات
+              </div>
+            ) : (
+              <TransactionList 
+                transactions={filteredTransactions}
+                basePath={`/transactions/${type}`}
+              />
+            )}
           </div>
         </div>
       </main>
