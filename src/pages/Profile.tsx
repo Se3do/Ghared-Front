@@ -1,18 +1,22 @@
 import { useState } from "react";
-import { User, Phone, Mail, Image, Save } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { User, Phone, Mail, Image, Save, Loader2 } from "lucide-react";
 import Header from "@/components/layout/Header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
+import { updateProfile } from "@/lib/api";
 
 const Profile = () => {
+  const navigate = useNavigate();
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({
-    username: "",
+    fullName: "",
     password: "",
     confirmPassword: "",
     email: "",
-    mobile: "",
+    mobileNumber: "",
     landline: "",
     fax: "",
   });
@@ -21,15 +25,31 @@ const Profile = () => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (formData.password && formData.password !== formData.confirmPassword) {
       toast.error("كلمة المرور غير متطابقة");
       return;
     }
+
+    setIsSubmitting(true);
     
-    toast.success("تم تحديث البيانات الشخصية بنجاح");
+    try {
+      const formDataToSend = new FormData();
+      if (formData.fullName) formDataToSend.append('fullName', formData.fullName);
+      if (formData.email) formDataToSend.append('email', formData.email);
+      if (formData.password) formDataToSend.append('password', formData.password);
+      if (formData.mobileNumber) formDataToSend.append('mobileNumber', formData.mobileNumber);
+
+      await updateProfile(formDataToSend);
+      toast.success("تم تحديث البيانات الشخصية بنجاح");
+      navigate('/');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "حدث خطأ في الاتصال بالخادم");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -50,14 +70,14 @@ const Profile = () => {
             {/* Form */}
             <form onSubmit={handleSubmit} className="p-8">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* Username */}
+                {/* Full Name */}
                 <div className="space-y-2 animate-fade-in" style={{ animationDelay: '0.1s' }}>
-                  <Label className="text-right block font-medium">اسم المستخدم</Label>
+                  <Label className="text-right block font-medium">الاسم الكامل</Label>
                   <div className="relative group">
                     <Input
-                      placeholder="ادخل اسم المستخدم"
-                      value={formData.username}
-                      onChange={(e) => handleChange('username', e.target.value)}
+                      placeholder="ادخل الاسم الكامل"
+                      value={formData.fullName}
+                      onChange={(e) => handleChange('fullName', e.target.value)}
                       className="pr-10 text-right input-focus border-primary/30 focus:border-primary"
                       dir="rtl"
                     />
@@ -113,8 +133,8 @@ const Profile = () => {
                   <div className="relative group">
                     <Input
                       placeholder="ادخل رقم الموبايل"
-                      value={formData.mobile}
-                      onChange={(e) => handleChange('mobile', e.target.value)}
+                      value={formData.mobileNumber}
+                      onChange={(e) => handleChange('mobileNumber', e.target.value)}
                       className="pr-10 text-right input-focus"
                       dir="rtl"
                     />
@@ -173,10 +193,15 @@ const Profile = () => {
                 <Button 
                   type="submit" 
                   size="lg"
+                  disabled={isSubmitting}
                   className="px-12 gap-2 btn-glow bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105"
                 >
-                  <Save className="w-5 h-5" />
-                  تحديث البيانات الشخصية
+                  {isSubmitting ? (
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                  ) : (
+                    <Save className="w-5 h-5" />
+                  )}
+                  {isSubmitting ? "جاري التحديث..." : "تحديث البيانات الشخصية"}
                 </Button>
               </div>
             </form>
