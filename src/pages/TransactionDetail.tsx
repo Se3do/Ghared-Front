@@ -1,5 +1,5 @@
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowRight, Reply, Loader2, FileText, Download } from "lucide-react";
+import { ArrowRight, Reply, Loader2, FileText, Download, Eye } from "lucide-react";
 import Header from "@/components/layout/Header";
 import TransactionsSidebar from "@/components/layout/TransactionsSidebar";
 import { Button } from "@/components/ui/button";
@@ -111,19 +111,52 @@ const TransactionDetail = () => {
               {attachments.length > 0 && (
                 <div className="border-t border-border pt-6">
                   <h3 className="font-bold text-right mb-4">المرفقات</h3>
-                  <div className="space-y-2">
-                    {attachments.map((attachment) => (
-                      <a
-                        key={attachment.attachment_id}
-                        href={attachment.file_path}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center justify-end gap-3 p-3 bg-muted/30 rounded-lg hover:bg-muted/50 transition-colors"
-                      >
-                        <span className="text-sm">{attachment.file_name}</span>
-                        <FileText className="w-5 h-5 text-primary" />
-                      </a>
-                    ))}
+                  <div className="space-y-3">
+                    {attachments.map((attachment) => {
+                      const baseUrl = "https://ghared-project-1lb7.onrender.com/uploads/";
+                      const fileUrl = `${baseUrl}${attachment.file_path}`;
+                      const fileName = attachment.description || attachment.file_path;
+                      
+                      return (
+                        <div
+                          key={attachment.attachment_id}
+                          className="flex items-center justify-between p-4 bg-muted/30 rounded-lg border border-border"
+                        >
+                          <div className="flex items-center gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => window.open(fileUrl, "_blank")}
+                              className="gap-2"
+                            >
+                              <Eye className="w-4 h-4" />
+                              معاينة
+                            </Button>
+                            <a
+                              href={fileUrl}
+                              download={fileName}
+                              className="inline-flex"
+                            >
+                              <Button variant="outline" size="sm" className="gap-2">
+                                <Download className="w-4 h-4" />
+                                تحميل
+                              </Button>
+                            </a>
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <div className="text-right">
+                              <p className="font-medium text-sm">{fileName}</p>
+                              <p className="text-xs text-muted-foreground">
+                                {new Date(attachment.attachment_date).toLocaleDateString("ar-EG")}
+                              </p>
+                            </div>
+                            <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                              <FileText className="w-5 h-5 text-primary" />
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               )}
@@ -135,13 +168,13 @@ const TransactionDetail = () => {
                   <div className="space-y-3">
                     {history.map((item, index) => (
                       <div
-                        key={index}
+                        key={item.path_id || index}
                         className="flex items-center justify-end gap-4 p-3 bg-muted/20 rounded-lg text-sm"
                       >
                         <span className="text-muted-foreground">
-                          {new Date(item.date).toLocaleDateString("ar-EG")}
+                          {new Date(item.created_at).toLocaleDateString("ar-EG")}
                         </span>
-                        <span>{item.action}</span>
+                        <span>{item.path_notes}</span>
                         <span className="text-primary">{item.from_department} ← {item.to_department}</span>
                       </div>
                     ))}

@@ -39,14 +39,16 @@ export interface TransactionFull {
   details: TransactionDetails;
   attachments: Array<{
     attachment_id: number;
-    file_name: string;
     file_path: string;
+    description: string;
+    attachment_date: string;
   }>;
   history: Array<{
+    path_id: number;
+    path_notes: string;
     from_department: string;
     to_department: string;
-    action: string;
-    date: string;
+    created_at: string;
   }>;
 }
 
