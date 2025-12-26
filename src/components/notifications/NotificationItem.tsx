@@ -1,4 +1,4 @@
-import { User, Check } from "lucide-react";
+import { User, Check, CheckCircle2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface NotificationItemProps {
@@ -9,9 +9,10 @@ interface NotificationItemProps {
   preview: string;
   date: string;
   isRead: boolean;
+  onMarkAsRead?: () => void;
 }
 
-const NotificationItem = ({ title, sender, senderInitial, preview, date, isRead }: NotificationItemProps) => {
+const NotificationItem = ({ title, sender, senderInitial, preview, date, isRead, onMarkAsRead }: NotificationItemProps) => {
   return (
     <div
       className={cn(
@@ -32,10 +33,21 @@ const NotificationItem = ({ title, sender, senderInitial, preview, date, isRead 
       {/* Date and read status */}
       <div className="flex flex-col items-center gap-3 text-sm text-muted-foreground min-w-[100px]">
         <span className="font-medium">{date}</span>
-        {isRead && (
+        {isRead ? (
           <div className="w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center">
             <Check className="w-4 h-4 text-primary" />
           </div>
+        ) : onMarkAsRead && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onMarkAsRead();
+            }}
+            className="w-6 h-6 rounded-full bg-muted hover:bg-primary/20 flex items-center justify-center transition-colors"
+            title="تعليم كمقروء"
+          >
+            <CheckCircle2 className="w-4 h-4 text-muted-foreground hover:text-primary" />
+          </button>
         )}
       </div>
       

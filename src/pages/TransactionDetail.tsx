@@ -1,23 +1,49 @@
-import { useParams, useNavigate, Link } from "react-router-dom";
-import { ArrowRight, Reply } from "lucide-react";
+import { useParams, useNavigate } from "react-router-dom";
+import { ArrowRight, Reply, Loader2, FileText, Download } from "lucide-react";
 import Header from "@/components/layout/Header";
 import TransactionsSidebar from "@/components/layout/TransactionsSidebar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { useTransactionDetails } from "@/hooks/useTransactions";
+import { useAuth } from "@/contexts/AuthContext";
+import { useEffect } from "react";
 
 const TransactionDetail = () => {
-  const { id } = useParams();
+  const { id, type } = useParams();
   const navigate = useNavigate();
+  const { isAuthenticated, isLoading: authLoading } = useAuth();
+  const { data, isLoading, error } = useTransactionDetails(id || "");
 
-  // Mock data - in real app this would come from API
-  const transaction = {
-    id: "TR-1766312765645",
-    sender: "Se3do",
-    subject: "موضوع مهم",
-    content: "dfsdgfsf",
-    date: "2025/12/21",
-    isNew: true,
-  };
+  useEffect(() => {
+    if (!authLoading && !isAuthenticated) {
+      navigate("/login");
+    }
+  }, [authLoading, isAuthenticated, navigate]);
+
+  if (authLoading || isLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Loader2 className="w-12 h-12 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (error || !data) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Header />
+        <main className="container mx-auto px-4 py-8">
+          <div className="text-center py-16 text-destructive">
+            حدث خطأ في تحميل تفاصيل المعاملة
+          </div>
+        </main>
+      </div>
+    );
+  }
+
+  const transaction = data.details;
+  const attachments = data.attachments || [];
+  const history = data.history || [];
 
   return (
     <div className="min-h-screen bg-background">
@@ -40,16 +66,18 @@ const TransactionDetail = () => {
                 <ArrowRight className="w-4 h-4" />
               </Button>
               
-              <h1 className="text-2xl font-bold">الصادرات</h1>
+              <h1 className="text-2xl font-bold">{transaction.subject}</h1>
             </div>
 
             {/* Transaction details card */}
             <div className="space-y-6">
               <div className="flex items-center justify-between">
-                <p className="text-muted-foreground">تاريخ المعاملة: {transaction.date}</p>
-                {transaction.isNew && (
-                  <Badge className="bg-primary text-primary-foreground">معاملة جديدة</Badge>
-                )}
+                <p className="text-muted-foreground">
+                  تاريخ المعاملة: {new Date(transaction.date).toLocaleDateString("ar-EG")}
+                </p>
+                <Badge className="bg-primary text-primary-foreground">
+                  {transaction.current_status}
+                </Badge>
               </div>
 
               <div>
@@ -57,11 +85,11 @@ const TransactionDetail = () => {
                 
                 <div className="space-y-3 text-right">
                   <div className="flex justify-end gap-2">
-                    <span className="text-muted-foreground">{transaction.id}</span>
+                    <span className="text-muted-foreground">{transaction.code}</span>
                     <span className="font-medium">:رقم المعاملة</span>
                   </div>
                   <div className="flex justify-end gap-2">
-                    <span className="text-muted-foreground">{transaction.sender}</span>
+                    <span className="text-muted-foreground">{transaction.sender_name}</span>
                     <span className="font-medium">:المرسل</span>
                   </div>
                 </div>
@@ -78,6 +106,48 @@ const TransactionDetail = () => {
                   <p className="text-foreground">{transaction.content}</p>
                 </div>
               </div>
+
+              {/* Attachments */}
+              {attachments.length > 0 && (
+                <div className="border-t border-border pt-6">
+                  <h3 className="font-bold text-right mb-4">المرفقات</h3>
+                  <div className="space-y-2">
+                    {attachments.map((attachment) => (
+                      <a
+                        key={attachment.attachment_id}
+                        href={attachment.file_path}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center justify-end gap-3 p-3 bg-muted/30 rounded-lg hover:bg-muted/50 transition-colors"
+                      >
+                        <span className="text-sm">{attachment.file_name}</span>
+                        <FileText className="w-5 h-5 text-primary" />
+                      </a>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* History */}
+              {history.length > 0 && (
+                <div className="border-t border-border pt-6">
+                  <h3 className="font-bold text-right mb-4">سجل المعاملة</h3>
+                  <div className="space-y-3">
+                    {history.map((item, index) => (
+                      <div
+                        key={index}
+                        className="flex items-center justify-end gap-4 p-3 bg-muted/20 rounded-lg text-sm"
+                      >
+                        <span className="text-muted-foreground">
+                          {new Date(item.date).toLocaleDateString("ar-EG")}
+                        </span>
+                        <span>{item.action}</span>
+                        <span className="text-primary">{item.from_department} ← {item.to_department}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               <div className="border-t border-border pt-6 flex gap-4 justify-start">
                 <Button variant="outline" onClick={() => navigate(-1)} className="gap-2">

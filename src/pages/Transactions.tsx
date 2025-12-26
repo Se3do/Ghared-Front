@@ -1,12 +1,14 @@
 import { useState } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { Search, X } from "lucide-react";
 import Header from "@/components/layout/Header";
 import TransactionsSidebar from "@/components/layout/TransactionsSidebar";
 import TransactionList from "@/components/transactions/TransactionList";
 import { Input } from "@/components/ui/input";
-import { useInbox } from "@/hooks/useInbox";
+import { useInbox, useSent, useDrafts, useDeleted } from "@/hooks/useTransactions";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useAuth } from "@/contexts/AuthContext";
+import { useEffect } from "react";
 
 const typeLabels: Record<string, string> = {
   outgoing: "الصادرات",
@@ -17,22 +19,62 @@ const typeLabels: Record<string, string> = {
 
 const Transactions = () => {
   const { type = "incoming" } = useParams();
+  const navigate = useNavigate();
+  const { isAuthenticated, isLoading: authLoading } = useAuth();
   const [searchQuery, setSearchQuery] = useState("");
-  const { data: inboxData, isLoading, error } = useInbox();
 
-  const transactions = inboxData?.map((t) => ({
+  // Fetch data based on type
+  const inboxQuery = useInbox();
+  const sentQuery = useSent();
+  const draftsQuery = useDrafts();
+  const deletedQuery = useDeleted();
+
+  useEffect(() => {
+    if (!authLoading && !isAuthenticated) {
+      navigate("/login");
+    }
+  }, [authLoading, isAuthenticated, navigate]);
+
+  // Get the right query based on type
+  const getQueryForType = () => {
+    switch (type) {
+      case "incoming":
+        return inboxQuery;
+      case "outgoing":
+        return sentQuery;
+      case "drafts":
+        return draftsQuery;
+      case "deleted":
+        return deletedQuery;
+      default:
+        return inboxQuery;
+    }
+  };
+
+  const query = getQueryForType();
+  const { data, isLoading, error } = query;
+
+  const transactions = data?.map((t) => ({
     id: t.transaction_id.toString(),
-    sender: t.sender_name,
-    subject: t.subject,
-    subjectPreview: t.code,
+    sender: t.sender_name || "",
+    subject: t.subject || "",
+    subjectPreview: t.code || "",
     date: new Date(t.date).toLocaleDateString("ar-EG"),
   })) || [];
 
   const filteredTransactions = transactions.filter(
     (t) =>
-      t.sender.includes(searchQuery) ||
-      t.subject.includes(searchQuery)
+      (t.sender?.includes(searchQuery) ?? false) ||
+      (t.subject?.includes(searchQuery) ?? false)
   );
+
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">

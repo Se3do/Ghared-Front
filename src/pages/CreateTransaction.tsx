@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { Send, Save, Plus, Trash2, Upload } from "lucide-react";
+import { Send, Save, Plus, Trash2, Upload, Loader2 } from "lucide-react";
 import Header from "@/components/layout/Header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,37 +11,47 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "sonner";
+import { useAuth } from "@/contexts/AuthContext";
+import { useFormData } from "@/hooks/useTransactions";
+import { createTransaction } from "@/lib/api";
 
 interface Attachment {
   id: string;
-  name: string;
+  file: File;
   description: string;
   date: string;
 }
 
-interface Recipient {
-  id: string;
-  name: string;
-  department: string;
-  selected: boolean;
-}
-
 const CreateTransaction = () => {
   const navigate = useNavigate();
+  const { user, isLoading: authLoading } = useAuth();
+  const { data: formData, isLoading: formLoading } = useFormData();
+  
   const [activeTab, setActiveTab] = useState("main");
   const [subject, setSubject] = useState("");
   const [content, setContent] = useState("");
   const [transactionNature, setTransactionNature] = useState("new");
-  const [transactionType, setTransactionType] = useState("transaction");
+  const [selectedTypeId, setSelectedTypeId] = useState<number | null>(null);
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [attachmentDescription, setAttachmentDescription] = useState("");
-  const [recipients, setRecipients] = useState<Recipient[]>([
-    { id: "1", name: "مكتب عميد الكلية", department: "baina magdy3", selected: false },
-    { id: "2", name: "المخازن", department: "VSTV", selected: false },
-    { id: "3", name: "وكيل الكلية لشئون التعليم والطلاب", department: "hanatesting", selected: false },
-  ]);
+  const [selectedReceivers, setSelectedReceivers] = useState<number[]>([]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setSelectedFile(file);
+    }
+  };
 
   const handleAddAttachment = () => {
+    if (!selectedFile) {
+      toast.error("يرجى اختيار ملف");
+      return;
+    }
     if (!attachmentDescription.trim()) {
       toast.error("يرجى إدخال وصف الملف");
       return;
@@ -49,13 +59,17 @@ const CreateTransaction = () => {
     
     const newAttachment: Attachment = {
       id: Date.now().toString(),
-      name: "ملف مرفق",
+      file: selectedFile,
       description: attachmentDescription,
       date: new Date().toLocaleDateString('ar-EG'),
     };
     
     setAttachments([...attachments, newAttachment]);
     setAttachmentDescription("");
+    setSelectedFile(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
     toast.success("تم إضافة المرفق بنجاح");
   };
 
@@ -64,20 +78,22 @@ const CreateTransaction = () => {
     toast.success("تم حذف المرفق");
   };
 
-  const toggleRecipient = (id: string) => {
-    setRecipients(recipients.map(r => 
-      r.id === id ? { ...r, selected: !r.selected } : r
-    ));
+  const toggleReceiver = (userId: number) => {
+    setSelectedReceivers(prev => 
+      prev.includes(userId) 
+        ? prev.filter(id => id !== userId)
+        : [...prev, userId]
+    );
   };
 
-  const handleSaveDraft = () => {
+  const handleSaveDraft = async () => {
+    // For now just navigate, draft API can be added later
     toast.success("تم حفظ المعاملة كمسودة");
     navigate("/transactions/drafts");
   };
 
-  const handleSubmit = () => {
-    const selectedRecipients = recipients.filter(r => r.selected);
-    if (selectedRecipients.length === 0) {
+  const handleSubmit = async () => {
+    if (selectedReceivers.length === 0) {
       toast.error("يرجى اختيار جهة واحدة على الأقل");
       return;
     }
@@ -85,9 +101,55 @@ const CreateTransaction = () => {
       toast.error("يرجى إدخال موضوع المعاملة");
       return;
     }
-    toast.success("تم إرسال المعاملة بنجاح");
-    navigate("/transactions/outgoing");
+    if (!selectedTypeId) {
+      toast.error("يرجى اختيار نوع المعاملة");
+      return;
+    }
+
+    setIsSubmitting(true);
+    
+    try {
+      const formDataToSend = new FormData();
+      formDataToSend.append("subject", subject);
+      formDataToSend.append("content", content);
+      formDataToSend.append("type_id", selectedTypeId.toString());
+      formDataToSend.append("is_reply", transactionNature === "reply" ? "true" : "false");
+      
+      // Add receivers as JSON array
+      formDataToSend.append("receivers", JSON.stringify(selectedReceivers));
+      
+      // Add attachments
+      attachments.forEach((attachment, index) => {
+        formDataToSend.append(`attachments`, attachment.file);
+        formDataToSend.append(`attachment_descriptions`, attachment.description);
+      });
+
+      const result = await createTransaction(formDataToSend);
+      
+      toast.success(result.message || "تم إرسال المعاملة بنجاح");
+      navigate("/transactions/outgoing");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "فشل في إرسال المعاملة");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
+
+  if (authLoading || formLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (!user) {
+    navigate("/login");
+    return null;
+  }
+
+  const receivers = formData?.receivers || [];
+  const types = formData?.types || [];
 
   return (
     <div className="min-h-screen bg-background">
@@ -143,15 +205,17 @@ const CreateTransaction = () => {
 
               <div className="space-y-4">
                 <Label className="text-right block">نوع المعاملة</Label>
-                <RadioGroup value={transactionType} onValueChange={setTransactionType} className="flex gap-8 justify-end">
-                  <div className="flex items-center gap-2">
-                    <Label htmlFor="decision">إقرار</Label>
-                    <RadioGroupItem value="decision" id="decision" />
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Label htmlFor="transaction">معاملة</Label>
-                    <RadioGroupItem value="transaction" id="transaction" />
-                  </div>
+                <RadioGroup 
+                  value={selectedTypeId?.toString() || ""} 
+                  onValueChange={(val) => setSelectedTypeId(Number(val))} 
+                  className="flex gap-8 justify-end flex-wrap"
+                >
+                  {types.map((type) => (
+                    <div key={type.id} className="flex items-center gap-2">
+                      <Label htmlFor={`type-${type.id}`}>{type.name}</Label>
+                      <RadioGroupItem value={type.id.toString()} id={`type-${type.id}`} />
+                    </div>
+                  ))}
                 </RadioGroup>
               </div>
 
@@ -183,9 +247,19 @@ const CreateTransaction = () => {
                   </div>
                   <div className="w-48">
                     <Label className="text-right block mb-2">اختر الملف</Label>
-                    <Button variant="outline" className="w-full gap-2">
+                    <input
+                      type="file"
+                      ref={fileInputRef}
+                      onChange={handleFileSelect}
+                      className="hidden"
+                    />
+                    <Button 
+                      variant="outline" 
+                      className="w-full gap-2"
+                      onClick={() => fileInputRef.current?.click()}
+                    >
                       <Upload className="w-4 h-4" />
-                      Choose File
+                      {selectedFile ? selectedFile.name.slice(0, 15) + "..." : "Choose File"}
                     </Button>
                   </div>
                 </div>
@@ -194,7 +268,7 @@ const CreateTransaction = () => {
                   <TableHeader>
                     <TableRow>
                       <TableHead className="text-right">حذف الملف</TableHead>
-                      <TableHead className="text-right">عرض الملف</TableHead>
+                      <TableHead className="text-right">اسم الملف</TableHead>
                       <TableHead className="text-right">وصف الملف</TableHead>
                       <TableHead className="text-right">التاريخ</TableHead>
                       <TableHead className="text-right">الرقم</TableHead>
@@ -220,9 +294,7 @@ const CreateTransaction = () => {
                               <Trash2 className="w-4 h-4" />
                             </Button>
                           </TableCell>
-                          <TableCell>
-                            <Button variant="link" size="sm">عرض</Button>
-                          </TableCell>
+                          <TableCell className="text-right">{attachment.file.name}</TableCell>
                           <TableCell className="text-right">{attachment.description}</TableCell>
                           <TableCell className="text-right">{attachment.date}</TableCell>
                           <TableCell className="text-right">{index + 1}</TableCell>
@@ -247,24 +319,24 @@ const CreateTransaction = () => {
               <h3 className="font-bold text-right text-lg">تحديد الجهات المرسل إليها</h3>
               
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {recipients.map((recipient) => (
+                {receivers.map((receiver) => (
                   <div
-                    key={recipient.id}
+                    key={receiver.user_id}
                     className={`border rounded-xl p-4 text-right cursor-pointer transition-all duration-200 ${
-                      recipient.selected 
+                      selectedReceivers.includes(receiver.user_id) 
                         ? 'border-primary bg-primary/5' 
                         : 'border-border hover:border-primary/50'
                     }`}
-                    onClick={() => toggleRecipient(recipient.id)}
+                    onClick={() => toggleReceiver(receiver.user_id)}
                   >
                     <div className="flex items-start justify-end gap-3">
                       <div>
-                        <p className="font-medium">{recipient.name}</p>
-                        <p className="text-sm text-primary">{recipient.department}</p>
+                        <p className="font-medium">{receiver.full_name}</p>
+                        <p className="text-sm text-primary">{receiver.department_name}</p>
                       </div>
                       <Checkbox
-                        checked={recipient.selected}
-                        onCheckedChange={() => toggleRecipient(recipient.id)}
+                        checked={selectedReceivers.includes(receiver.user_id)}
+                        onCheckedChange={() => toggleReceiver(receiver.user_id)}
                       />
                     </div>
                   </div>
@@ -272,8 +344,12 @@ const CreateTransaction = () => {
               </div>
 
               <div className="flex gap-4 justify-start pt-8">
-                <Button onClick={handleSubmit} className="gap-2">
-                  <Send className="w-4 h-4" />
+                <Button onClick={handleSubmit} disabled={isSubmitting} className="gap-2">
+                  {isSubmitting ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Send className="w-4 h-4" />
+                  )}
                   إرسال المعاملة
                 </Button>
                 <Button variant="outline" onClick={handleSaveDraft} className="gap-2">
