@@ -113,15 +113,15 @@ const CreateTransaction = () => {
       formDataToSend.append("subject", subject);
       formDataToSend.append("content", content);
       formDataToSend.append("type_id", selectedTypeId.toString());
-      formDataToSend.append("is_reply", transactionNature === "reply" ? "true" : "false");
-      
-      // Add receivers as JSON array
-      formDataToSend.append("receivers", JSON.stringify(selectedReceivers));
-      
-      // Add attachments
-      attachments.forEach((attachment, index) => {
-        formDataToSend.append(`attachments`, attachment.file);
-        formDataToSend.append(`attachment_descriptions`, attachment.description);
+      // send is_draft as false
+      formDataToSend.append("is_draft", "false");
+
+      // Add receivers as comma-separated string (API expects single value)
+      formDataToSend.append("receivers", selectedReceivers.join(","));
+
+      // Add attachments (each as 'attachments' field - API expects this format)
+      attachments.forEach((attachment) => {
+        formDataToSend.append("attachments", attachment.file);
       });
 
       const result = await createTransaction(formDataToSend);

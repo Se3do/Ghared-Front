@@ -8,6 +8,7 @@ interface Transaction {
   subjectPreview: string;
   date: string;
   isNew?: boolean;
+  receivers?: string[];
 }
 
 interface TransactionListProps {
@@ -36,6 +37,9 @@ const TransactionList = ({ transactions, basePath = "/transactions" }: Transacti
               )}
             </div>
             <p className="text-sm text-muted-foreground mt-1">{transaction.subjectPreview}</p>
+            {transaction.receivers && transaction.receivers.length > 0 && (
+              <p className="text-xs text-muted-foreground mt-1">مرسل إلى: {transaction.receivers.join("، ")}</p>
+            )}
           </div>
         </Link>
       ))}

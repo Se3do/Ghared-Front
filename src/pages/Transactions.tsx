@@ -9,6 +9,7 @@ import { useInbox, useSent, useDrafts, useDeleted } from "@/hooks/useTransaction
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/contexts/AuthContext";
 import { useEffect } from "react";
+import { fetchTransactionDetails } from "@/lib/api";
 
 const typeLabels: Record<string, string> = {
   outgoing: "الصادرات",
@@ -54,12 +55,15 @@ const Transactions = () => {
   const query = getQueryForType();
   const { data, isLoading, error } = query;
 
+  const [receiverMap, setReceiverMap] = useState<Record<string, string[]>>({});
+
   const transactions = data?.map((t) => ({
     id: t.transaction_id.toString(),
     sender: t.sender_name || "",
     subject: t.subject || "",
     subjectPreview: t.code || "",
     date: new Date(t.date).toLocaleDateString("ar-EG"),
+    receivers: receiverMap[t.transaction_id] || [],
   })) || [];
 
   const filteredTransactions = transactions.filter(
@@ -67,6 +71,40 @@ const Transactions = () => {
       (t.sender?.includes(searchQuery) ?? false) ||
       (t.subject?.includes(searchQuery) ?? false)
   );
+
+  // When viewing outgoing, fetch details for each transaction to extract receiver departments
+  useEffect(() => {
+    let mounted = true;
+    const loadDetails = async () => {
+      if (type !== "outgoing" || !data || data.length === 0) return;
+
+      const newMap: Record<string, string[]> = { ...receiverMap };
+
+      await Promise.all(
+        data.map(async (t) => {
+          const idStr = t.transaction_id.toString();
+          if (newMap[idStr]) return;
+          try {
+            const details = await fetchTransactionDetails(idStr);
+            const history = details?.history || [];
+            const toDeps = history
+              .map((h: any) => h.to_department)
+              .filter(Boolean) as string[];
+            // dedupe
+            newMap[idStr] = Array.from(new Set(toDeps));
+          } catch (e) {
+            // ignore individual failures
+          }
+        })
+      );
+
+      if (mounted) setReceiverMap(newMap);
+    };
+
+    loadDetails();
+    return () => { mounted = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [type, data]);
 
   if (authLoading) {
     return (

@@ -260,6 +260,7 @@ export const createTransaction = async (formData: globalThis.FormData): Promise<
     method: "POST",
     headers: {
       "Authorization": `Bearer ${token}`,
+      "Accept": "application/json",
     },
     body: formData,
   });
