@@ -276,7 +276,7 @@ export const createTransaction = async (formData: globalThis.FormData): Promise<
   return result;
 };
 
-export const fetchNotifications = async (page = 1, limit = 10): Promise<{ notifications: Notification[] }> => {
+export const fetchNotifications = async (page = 1, limit = 10): Promise<{ notifications: Notification[]; unreadCount: number }> => {
   const token = getToken();
   if (!token) throw new Error("غير مسجل الدخول");
 
@@ -289,7 +289,7 @@ export const fetchNotifications = async (page = 1, limit = 10): Promise<{ notifi
     throw new Error("انتهت صلاحية الجلسة");
   }
 
-  const result: ApiResponse<{ notifications: Notification[] }> = await response.json();
+  const result: ApiResponse<{ notifications: Notification[]; unreadCount: number }> = await response.json();
   return result.data;
 };
 

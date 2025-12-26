@@ -3,10 +3,21 @@ import { Link, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import universityLogo from "@/assets/hurghada-logo.png";
+import { useQuery } from "@tanstack/react-query";
+import { fetchNotifications } from "@/lib/api";
 
 const Header = () => {
   const location = useLocation();
   const isLoginPage = location.pathname === "/login";
+
+  const { data: notificationsData } = useQuery({
+    queryKey: ['notifications-count'],
+    queryFn: () => fetchNotifications(1, 1),
+    enabled: !isLoginPage,
+    refetchInterval: 30000, // Refresh every 30 seconds
+  });
+
+  const unreadCount = notificationsData?.unreadCount ?? 0;
 
   if (isLoginPage) {
     return (
@@ -85,9 +96,11 @@ const Header = () => {
               className="relative hover:bg-primary/10 transition-all duration-300"
             >
               <Bell className="w-5 h-5 group-hover:animate-wiggle" />
-              <Badge className="absolute -top-1 -right-1 w-5 h-5 p-0 flex items-center justify-center text-xs bg-destructive text-destructive-foreground animate-pulse">
-                3
-              </Badge>
+              {unreadCount > 0 && (
+                <Badge className="absolute -top-1 -right-1 w-5 h-5 p-0 flex items-center justify-center text-xs bg-destructive text-destructive-foreground animate-pulse">
+                  {unreadCount > 9 ? '9+' : unreadCount}
+                </Badge>
+              )}
             </Button>
           </Link>
           <Link to="/profile" className="group">
