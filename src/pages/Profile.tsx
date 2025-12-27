@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { User, Phone, Mail, Image, Save, Loader2 } from "lucide-react";
 import Header from "@/components/layout/Header";
@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { updateProfile, getUser } from "@/lib/api";
+import { updateProfile } from "@/lib/api";
 
 const Profile = () => {
   const navigate = useNavigate();
@@ -20,18 +20,6 @@ const Profile = () => {
     landline: "",
     fax: "",
   });
-
-  useEffect(() => {
-    const user = getUser();
-    if (user) {
-      setFormData(prev => ({
-        ...prev,
-        fullName: user.full_name || "",
-        email: user.email || "",
-        mobileNumber: user.mobile || "",
-      }));
-    }
-  }, []);
 
   const handleChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
