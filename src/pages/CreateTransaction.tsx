@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Send, Save, Plus, Trash2, Upload, Loader2, FileText, Calendar } from "lucide-react";
+import { Send, Save, Plus, Trash2, Upload, Loader2, FileText, Calendar, Search, ChevronDown, ChevronUp } from "lucide-react";
 import Header from "@/components/layout/Header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -38,7 +38,8 @@ const CreateTransaction = () => {
   const [selectedReceivers, setSelectedReceivers] = useState<number[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [parentTransactionId, setParentTransactionId] = useState<number | null>(null);
-  
+  const [receiverSearch, setReceiverSearch] = useState("");
+  const [collapsedDepartments, setCollapsedDepartments] = useState<number[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
@@ -92,6 +93,37 @@ const CreateTransaction = () => {
       prev.includes(userId)
         ? prev.filter(id => id !== userId)
         : [...prev, userId]
+    );
+  };
+
+  const toggleDepartment = (departmentEmployees: { user_id: number }[]) => {
+    const employeeIds = departmentEmployees.map(e => e.user_id);
+    const allSelected = employeeIds.every(id => selectedReceivers.includes(id));
+    
+    if (allSelected) {
+      // Deselect all employees in this department
+      setSelectedReceivers(prev => prev.filter(id => !employeeIds.includes(id)));
+    } else {
+      // Select all employees in this department
+      setSelectedReceivers(prev => [...new Set([...prev, ...employeeIds])]);
+    }
+  };
+
+  const isDepartmentAllSelected = (departmentEmployees: { user_id: number }[]) => {
+    return departmentEmployees.length > 0 && departmentEmployees.every(e => selectedReceivers.includes(e.user_id));
+  };
+
+  const isDepartmentPartiallySelected = (departmentEmployees: { user_id: number }[]) => {
+    const someSelected = departmentEmployees.some(e => selectedReceivers.includes(e.user_id));
+    const allSelected = departmentEmployees.every(e => selectedReceivers.includes(e.user_id));
+    return someSelected && !allSelected;
+  };
+
+  const toggleDepartmentCollapse = (departmentId: number) => {
+    setCollapsedDepartments(prev => 
+      prev.includes(departmentId)
+        ? prev.filter(id => id !== departmentId)
+        : [...prev, departmentId]
     );
   };
 
@@ -389,31 +421,99 @@ const CreateTransaction = () => {
             </TabsContent>
 
             <TabsContent value="send" className="space-y-6">
-              <h3 className="font-bold text-right text-lg">تحديد الجهات المرسل إليها</h3>
+              <div className="flex items-center justify-between">
+                <div className="bg-primary/10 text-primary px-3 py-1 rounded-full text-sm font-medium">
+                  {selectedReceivers.length} موظف محدد
+                </div>
+                <h3 className="font-bold text-right text-lg">تحديد الجهات المرسل إليها</h3>
+              </div>
               
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {receivers.map((receiver) => (
-                  <div
-                    key={receiver.user_id}
-                    className={`border rounded-xl p-4 text-right cursor-pointer transition-all duration-200 ${
-                      selectedReceivers.includes(receiver.user_id) 
-                        ? 'border-primary bg-primary/5' 
-                        : 'border-border hover:border-primary/50'
-                    }`}
-                    onClick={() => toggleReceiver(receiver.user_id)}
-                  >
-                    <div className="flex items-start justify-end gap-3">
-                      <div>
-                        <p className="font-medium">{receiver.full_name}</p>
-                        <p className="text-sm text-primary">{receiver.department_name}</p>
+              {/* Search Input */}
+              <div className="relative">
+                <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input
+                  placeholder="البحث عن موظف..."
+                  value={receiverSearch}
+                  onChange={(e) => setReceiverSearch(e.target.value)}
+                  className="text-right pr-10"
+                  dir="rtl"
+                />
+              </div>
+              
+              <div className="space-y-4">
+                {receivers
+                  .map((department) => ({
+                    ...department,
+                    employees: department.employees.filter(emp => 
+                      emp.full_name.toLowerCase().includes(receiverSearch.toLowerCase())
+                    )
+                  }))
+                  .filter(department => department.employees.length > 0)
+                  .map((department) => {
+                    const isCollapsed = collapsedDepartments.includes(department.department_id);
+                    return (
+                      <div key={department.department_id} className="border border-border rounded-xl overflow-hidden">
+                        <div className="bg-muted/50 px-4 py-3 border-b border-border flex items-center gap-3">
+                          <button
+                            type="button"
+                            onClick={() => toggleDepartmentCollapse(department.department_id)}
+                            className="p-1 hover:bg-muted rounded transition-colors"
+                          >
+                            {isCollapsed ? (
+                              <ChevronDown className="w-4 h-4 text-muted-foreground" />
+                            ) : (
+                              <ChevronUp className="w-4 h-4 text-muted-foreground" />
+                            )}
+                          </button>
+                          <Checkbox
+                            checked={isDepartmentAllSelected(department.employees)}
+                            className={isDepartmentPartiallySelected(department.employees) ? "data-[state=unchecked]:bg-primary/30" : ""}
+                            onCheckedChange={() => toggleDepartment(department.employees)}
+                            onClick={(e) => e.stopPropagation()}
+                          />
+                          <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
+                            {department.employees.filter(e => selectedReceivers.includes(e.user_id)).length}/{department.employees.length}
+                          </span>
+                          <h4 
+                            className="font-semibold text-primary flex-1 text-right cursor-pointer"
+                            onClick={() => toggleDepartmentCollapse(department.department_id)}
+                          >
+                            {department.department_name}
+                          </h4>
+                        </div>
+                        {!isCollapsed && (
+                          <div className="p-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                            {department.employees.map((employee) => (
+                              <div
+                                key={employee.user_id}
+                                className={`border rounded-lg p-3 text-right cursor-pointer transition-all duration-200 ${
+                                  selectedReceivers.includes(employee.user_id) 
+                                    ? 'border-primary bg-primary/5' 
+                                    : 'border-border hover:border-primary/50 bg-background'
+                                }`}
+                                onClick={() => toggleReceiver(employee.user_id)}
+                              >
+                                <div className="flex items-center justify-end gap-3">
+                                  <p className="font-medium">{employee.full_name}</p>
+                                  <Checkbox
+                                    checked={selectedReceivers.includes(employee.user_id)}
+                                    onCheckedChange={() => toggleReceiver(employee.user_id)}
+                                  />
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
                       </div>
-                      <Checkbox
-                        checked={selectedReceivers.includes(receiver.user_id)}
-                        onCheckedChange={() => toggleReceiver(receiver.user_id)}
-                      />
-                    </div>
+                    );
+                  })}
+                {receivers.length > 0 && receivers.every(d => 
+                  d.employees.filter(e => e.full_name.toLowerCase().includes(receiverSearch.toLowerCase())).length === 0
+                ) && (
+                  <div className="text-center py-8 text-muted-foreground">
+                    لا توجد نتائج للبحث
                   </div>
-                ))}
+                )}
               </div>
 
               <div className="flex gap-4 justify-start pt-8">
