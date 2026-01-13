@@ -123,4 +123,4 @@ See the `LICENSE` file for full details.
 
 **Mohammed Said**  
 Computer Science Student  
-Software Engineer | Front-End Developer
+Aspiring Software Engineer | Full-Stack Developer | AI enthusiast
