@@ -108,8 +108,14 @@ The production-ready files will be generated in the `dist/` directory.
 
 ## 📄 License
 
-This project is intended for educational and development purposes.  
-No license file is currently included.
+This project is licensed under the **MIT License**.
+
+You are free to:
+- Use the project for personal, educational, or commercial purposes
+- Modify and adapt the source code
+- Distribute the project with proper attribution
+
+See the `LICENSE` file for full details.
 
 ---
 
