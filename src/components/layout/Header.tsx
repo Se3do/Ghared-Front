@@ -8,9 +8,10 @@ import universityLogo from "@/assets/hurghada-logo.png";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
 import { io } from "socket.io-client";
-import { toast } from "sonner"; // 2. استيراد التوستر
+import { toast } from "sonner";
 import { fetchNotifications, fetchUserProfile, BASE_URL, API_BASE_URL, UserProfileData } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -132,13 +133,16 @@ const Header = () => {
     return (
       <header className="bg-card border-b border-border shadow-sm">
         <div className="container mx-auto px-4 py-3 flex items-center justify-between">
-          <Button
-            variant="outline"
-            size="sm"
-            className="text-primary border-primary hover:bg-primary hover:text-primary-foreground transition-all duration-300 hover:scale-105"
-          >
-            تواصل معنا
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              className="text-primary border-primary hover:bg-primary hover:text-primary-foreground transition-all duration-300 hover:scale-105"
+            >
+              تواصل معنا
+            </Button>
+            <ThemeToggle />
+          </div>
           <div className="flex items-center gap-4">
             <div className="text-right">
               <h1 className="text-lg font-bold text-primary">جامعة الغردقة</h1>
@@ -198,6 +202,7 @@ const Header = () => {
         </nav>
 
         <div className="flex items-center gap-4">
+          <ThemeToggle />
           <Link to="/notifications" className="relative group">
             <Button
               variant="ghost"
