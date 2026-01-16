@@ -1,14 +1,22 @@
-import { Bell, Mail, Send, Plus, TrendingUp, Clock, Archive, AlertCircle } from "lucide-react";
+import { Bell, Mail, Send, Plus, Archive, AlertCircle } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
 import Header from "@/components/layout/Header";
 import StatsCard from "@/components/dashboard/StatsCard";
 import ActionCard from "@/components/dashboard/ActionCard";
+import { fetchDashboardStats } from "@/lib/api";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const Dashboard = () => {
+  const { data: statsData, isLoading } = useQuery({
+    queryKey: ["dashboard-stats"],
+    queryFn: fetchDashboardStats,
+  });
+
   const stats = [
-    { title: "الصادرة", value: 1234, change: { value: 10, isPositive: true }, icon: Send, variant: "primary" as const },
-    { title: "الواردة", value: 987, change: { value: 5, isPositive: false }, icon: Mail, variant: "default" as const },
-    { title: "الأرشيف", value: 567, change: { value: 2, isPositive: true }, icon: Archive, variant: "default" as const },
-    { title: "المتأخرة", value: 23, change: { value: 1, isPositive: false }, icon: AlertCircle, variant: "warning" as const },
+    { title: "الصادرة", value: statsData?.outgoing ?? 0, change: { value: 10, isPositive: true }, icon: Send, variant: "primary" as const },
+    { title: "الواردة", value: statsData?.incoming ?? 0, change: { value: 5, isPositive: false }, icon: Mail, variant: "default" as const },
+    { title: "الأرشيف", value: statsData?.archived ?? 0, change: { value: 2, isPositive: true }, icon: Archive, variant: "default" as const },
+    { title: "المتأخرة", value: statsData?.overdue ?? 0, change: { value: 1, isPositive: false }, icon: AlertCircle, variant: "warning" as const },
   ];
 
   const actions = [
@@ -27,18 +35,26 @@ const Dashboard = () => {
         <section className="mb-12">
           <h2 className="section-title justify-end mb-8 animate-fade-in">إحصائيات عامة</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {stats.map((stat, index) => (
-              <StatsCard
-                key={stat.title}
-                title={stat.title}
-                value={stat.value}
-                change={stat.change}
-                icon={stat.icon}
-                variant={stat.variant}
-                className="animate-fade-in"
-                style={{ animationDelay: `${index * 100}ms` }}
-              />
-            ))}
+            {isLoading ? (
+              <>
+                {[...Array(4)].map((_, index) => (
+                  <Skeleton key={index} className="h-32 rounded-xl" />
+                ))}
+              </>
+            ) : (
+              stats.map((stat, index) => (
+                <StatsCard
+                  key={stat.title}
+                  title={stat.title}
+                  value={stat.value}
+                  change={stat.change}
+                  icon={stat.icon}
+                  variant={stat.variant}
+                  className="animate-fade-in"
+                  style={{ animationDelay: `${index * 100}ms` }}
+                />
+              ))
+            )}
           </div>
         </section>
 

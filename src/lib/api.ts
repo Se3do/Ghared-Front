@@ -1,4 +1,5 @@
 export const BASE_URL = "https://ghared-project-1lb7.onrender.com";
+export const API_BASE_URL = "https://ghared-project-1lb7.onrender.com/api";
 
 // ================= Types =================
 export interface User {
@@ -21,6 +22,7 @@ export interface InboxTransaction {
   transaction_id: number;
   code: string;
   subject: string;
+  content?: string;
   date: string;
   sender_name: string;
 }
@@ -33,6 +35,17 @@ export interface TransactionDetails {
   date: string;
   sender_name: string;
   current_status: string;
+  type_id?: number;
+  type_name?: string;
+}
+
+export interface TrackingItem {
+  type: "movement" | "action";
+  date: string;
+  title: string;
+  description: string;
+  performer: string;
+  department: string;
 }
 
 export interface TransactionFull {
@@ -43,13 +56,7 @@ export interface TransactionFull {
     description: string;
     attachment_date: string;
   }>;
-  history: Array<{
-    path_id: number;
-    path_notes: string;
-    from_department: string;
-    to_department: string;
-    created_at: string;
-  }>;
+  tracking: TrackingItem[];
 }
 
 export interface Employee {
@@ -83,6 +90,20 @@ export interface Notification {
   messageSnippet: string;
   date: string;
   is_read: boolean;
+}
+
+export interface UserProfileData {
+  full_name: string;
+  email: string;
+  mobile_number: string;
+  profile_picture: string | null;
+}
+
+export interface UserProfileResponse {
+  status: string;
+  data: {
+    user: UserProfileData;
+  };
 }
 
 export interface ApiResponse<T> {
@@ -141,8 +162,32 @@ export const login = async (email: string, password: string): Promise<LoginRespo
   return data;
 };
 
-export const updateProfile = async (formData: globalThis.FormData): Promise<ApiResponse<User>> => {
+export const fetchUserProfile = async (): Promise<UserProfileData> => {
   const token = getToken();
+  if (!token) throw new Error("غير مسجل الدخول");
+
+  const response = await fetch(`${BASE_URL}/api/users/profile`, {
+    headers: authHeaders(),
+  });
+
+  if (response.status === 401) {
+    clearAuth();
+    throw new Error("انتهت صلاحية الجلسة");
+  }
+
+  const result: UserProfileResponse = await response.json();
+
+  if (!response.ok) {
+    throw new Error("فشل في جلب بيانات الملف الشخصي");
+  }
+
+  return result.data.user;
+};
+
+export const updateUserProfile = async (formData: globalThis.FormData): Promise<ApiResponse<UserProfileData>> => {
+  const token = getToken();
+  if (!token) throw new Error("غير مسجل الدخول");
+
   const response = await fetch(`${BASE_URL}/api/users/profile/update`, {
     method: "PUT",
     headers: {
@@ -151,13 +196,18 @@ export const updateProfile = async (formData: globalThis.FormData): Promise<ApiR
     body: formData,
   });
 
-  const data = await response.json();
-
-  if (!response.ok) {
-    throw new Error(data.message || "فشل في تحديث الملف الشخصي");
+  if (response.status === 401) {
+    clearAuth();
+    throw new Error("انتهت صلاحية الجلسة");
   }
 
-  return data;
+  const result = await response.json();
+
+  if (!response.ok) {
+    throw new Error(result.message || "فشل في تحديث الملف الشخصي");
+  }
+
+  return result;
 };
 
 export const fetchInbox = async (): Promise<InboxTransaction[]> => {
@@ -198,7 +248,7 @@ export const fetchDrafts = async (): Promise<InboxTransaction[]> => {
   const token = getToken();
   if (!token) throw new Error("غير مسجل الدخول");
 
-  const response = await fetch(`${BASE_URL}/api/transactions/draft`, {
+  const response = await fetch(`${BASE_URL}/api/drafts`, {
     headers: authHeaders(),
   });
 
@@ -226,6 +276,32 @@ export const fetchDeleted = async (): Promise<InboxTransaction[]> => {
 
   const result: ApiResponse<InboxTransaction[]> = await response.json();
   return result.data || [];
+};
+
+export interface DashboardStats {
+  outgoing: number;
+  incoming: number;
+  archived: number;
+  overdue: number;
+}
+
+export const fetchDashboardStats = async (): Promise<DashboardStats> => {
+  const token = getToken();
+  if (!token) throw new Error("غير مسجل الدخول");
+
+  // Fetch all counts in parallel
+  const [inbox, sent, deleted] = await Promise.all([
+    fetchInbox(),
+    fetchSent(),
+    fetchDeleted(),
+  ]);
+
+  return {
+    outgoing: sent.length,
+    incoming: inbox.length,
+    archived: deleted.length,
+    overdue: 0, // No overdue endpoint available
+  };
 };
 
 export const fetchTransactionDetails = async (id: string): Promise<TransactionFull | null> => {
@@ -310,6 +386,51 @@ export const createTransaction = async (formData: globalThis.FormData): Promise<
   return result;
 };
 
+export const saveDraft = async (formData: globalThis.FormData): Promise<ApiResponse<unknown>> => {
+  const token = getToken();
+  if (!token) throw new Error("غير مسجل الدخول");
+
+  const response = await fetch(`${BASE_URL}/api/transactions/create`, {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${token}`,
+      "Accept": "application/json",
+    },
+    body: formData,
+  });
+
+  const result = await response.json();
+
+  if (!response.ok) {
+    throw new Error(result.message || "فشل في حفظ المسودة");
+  }
+
+  return result;
+};
+
+export const deleteDraft = async (draftId: number): Promise<ApiResponse<unknown>> => {
+  const token = getToken();
+  if (!token) throw new Error("غير مسجل الدخول");
+
+  const response = await fetch(`${BASE_URL}/api/drafts/${draftId}`, {
+    method: "DELETE",
+    headers: authHeaders(),
+  });
+
+  if (response.status === 401) {
+    clearAuth();
+    throw new Error("انتهت صلاحية الجلسة");
+  }
+
+  const result = await response.json();
+
+  if (!response.ok) {
+    throw new Error(result.message || "فشل في حذف المسودة");
+  }
+
+  return result;
+};
+
 export const fetchNotifications = async (page = 1, limit = 10): Promise<{ notifications: Notification[]; unreadCount: number }> => {
   const token = getToken();
   if (!token) throw new Error("غير مسجل الدخول");
@@ -335,4 +456,32 @@ export const markNotificationRead = async (notificationId: number): Promise<void
     method: "PUT",
     headers: authHeaders(),
   });
+};
+
+export const performTransactionAction = async (
+  transactionId: string,
+  actionName: string,
+  annotation: string
+): Promise<ApiResponse<unknown>> => {
+  const token = getToken();
+  if (!token) throw new Error("غير مسجل الدخول");
+
+  const response = await fetch(`${BASE_URL}/api/transactions/${transactionId}/actions`, {
+    method: "POST",
+    headers: authHeaders(),
+    body: JSON.stringify({ action_name: actionName, annotation }),
+  });
+
+  if (response.status === 401) {
+    clearAuth();
+    throw new Error("انتهت صلاحية الجلسة");
+  }
+
+  const result = await response.json();
+
+  if (!response.ok) {
+    throw new Error(result.message || "فشل في تنفيذ الإجراء");
+  }
+
+  return result;
 };
