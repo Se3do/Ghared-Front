@@ -69,7 +69,7 @@ const Dashboard = () => {
   }];
   return <div className="min-h-screen bg-background">
       <Header />
-
+      
       <main className="container mx-auto px-4 py-8">
         {/* Statistics Section */}
         <section className="mb-12">
@@ -99,3 +99,4 @@ const Dashboard = () => {
       </main>
     </div>;
 };
+export default Dashboard;
