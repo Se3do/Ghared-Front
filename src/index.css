@@ -139,10 +139,18 @@
     @apply bg-gradient-to-br from-primary via-primary/90 to-primary/70 text-primary-foreground rounded-2xl p-6 shadow-lg transition-all duration-500 hover:shadow-2xl hover:scale-[1.03] hover:-translate-y-1 relative overflow-hidden;
   }
 
+  .dark .stat-card {
+    @apply bg-gradient-to-br from-card via-card/95 to-card/90 text-card-foreground border border-border/50 shadow-[0_0_20px_hsl(var(--primary)/0.15)];
+  }
+
   .stat-card::before {
     content: '';
     @apply absolute inset-0 bg-gradient-to-r from-transparent via-[hsl(var(--primary-foreground)/0.1)] to-transparent -translate-x-full;
     animation: shimmer 3s infinite;
+  }
+
+  .dark .stat-card::before {
+    @apply via-[hsl(var(--primary)/0.15)];
   }
 
   @keyframes shimmer {
@@ -153,12 +161,24 @@
     @apply bg-gradient-to-br from-[hsl(var(--success))] via-[hsl(var(--success)/0.9)] to-[hsl(var(--success)/0.7)] text-[hsl(var(--success-foreground))];
   }
 
+  .dark .stat-card-success {
+    @apply bg-gradient-to-br from-[hsl(var(--success)/0.2)] via-[hsl(var(--success)/0.15)] to-[hsl(var(--success)/0.1)] text-[hsl(var(--success))] border-[hsl(var(--success)/0.3)];
+  }
+
   .stat-card-warning {
     @apply bg-gradient-to-br from-[hsl(var(--warning))] via-[hsl(var(--warning)/0.9)] to-[hsl(var(--warning)/0.7)] text-[hsl(var(--warning-foreground))];
   }
 
+  .dark .stat-card-warning {
+    @apply bg-gradient-to-br from-[hsl(var(--warning)/0.2)] via-[hsl(var(--warning)/0.15)] to-[hsl(var(--warning)/0.1)] text-[hsl(var(--warning))] border-[hsl(var(--warning)/0.3)];
+  }
+
   .stat-card-info {
     @apply bg-gradient-to-br from-[hsl(var(--info))] via-[hsl(var(--info)/0.9)] to-[hsl(var(--info)/0.7)] text-[hsl(var(--info-foreground))];
+  }
+
+  .dark .stat-card-info {
+    @apply bg-gradient-to-br from-[hsl(var(--info)/0.2)] via-[hsl(var(--info)/0.15)] to-[hsl(var(--info)/0.1)] text-[hsl(var(--info))] border-[hsl(var(--info)/0.3)];
   }
 
   .action-card {

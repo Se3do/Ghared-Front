@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
-import { Bell, LogOut } from "lucide-react";
+import { Bell, LogOut, Sun, Moon } from "lucide-react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
+import { useTheme } from "next-themes";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -8,10 +9,9 @@ import universityLogo from "@/assets/hurghada-logo.png";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
 import { io } from "socket.io-client";
-import { toast } from "sonner";
+import { toast } from "sonner"; // 2. استيراد التوستر
 import { fetchNotifications, fetchUserProfile, BASE_URL, API_BASE_URL, UserProfileData } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
-import { ThemeToggle } from "@/components/ThemeToggle";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -27,6 +27,7 @@ const Header = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { logout } = useAuth();
+  const { theme, setTheme } = useTheme();
   const isLoginPage = location.pathname === "/login";
   const queryClient = useQueryClient();
   const [showLogoutDialog, setShowLogoutDialog] = useState(false);
@@ -133,16 +134,13 @@ const Header = () => {
     return (
       <header className="bg-card border-b border-border shadow-sm">
         <div className="container mx-auto px-4 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              className="text-primary border-primary hover:bg-primary hover:text-primary-foreground transition-all duration-300 hover:scale-105"
-            >
-              تواصل معنا
-            </Button>
-            <ThemeToggle />
-          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            className="text-primary border-primary hover:bg-primary hover:text-primary-foreground transition-all duration-300 hover:scale-105"
+          >
+            تواصل معنا
+          </Button>
           <div className="flex items-center gap-4">
             <div className="text-right">
               <h1 className="text-lg font-bold text-primary">جامعة الغردقة</h1>
@@ -202,7 +200,19 @@ const Header = () => {
         </nav>
 
         <div className="flex items-center gap-4">
-          <ThemeToggle />
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+            className="hover:bg-primary/10 transition-all duration-300"
+            title={theme === "dark" ? "الوضع الفاتح" : "الوضع الداكن"}
+          >
+            {theme === "dark" ? (
+              <Sun className="w-5 h-5" />
+            ) : (
+              <Moon className="w-5 h-5" />
+            )}
+          </Button>
           <Link to="/notifications" className="relative group">
             <Button
               variant="ghost"
