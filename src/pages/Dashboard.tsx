@@ -62,7 +62,7 @@ const Dashboard = () => {
 
         {/* Quick Actions Section */}
         <section>
-          <h2 className="section-title justify-end mb-8 animate-fade-in" style={{ animationDelay: '0.3s' }}>لوحة الإدارة</h2>
+          <h2 className="section-title justify-start mb-8 animate-fade-in" style={{ animationDelay: '0.3s' }}>لوحة الإدارة</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
             {actions.map((action, index) => (
               <ActionCard
