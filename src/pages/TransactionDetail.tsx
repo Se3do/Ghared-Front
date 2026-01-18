@@ -278,48 +278,38 @@ const TransactionDetail = () => {
                   <ArrowRight className="w-4 h-4" />
                   رجوع
                 </Button>
-                {transaction.type_name !== "إقرار" && (
+                <Button variant="outline" className="gap-2 text-primary border-primary hover:bg-primary hover:text-primary-foreground">
+                  <Reply className="w-4 h-4" />
+                  رد على المعاملة
+                </Button>
+                {type === "incoming" && (
+                  <Button
+                    variant="outline"
+                    className="gap-2 text-amber-600 border-amber-600 hover:bg-amber-600 hover:text-white"
+                    onClick={handleReferralClick}
+                  >
+                    <Forward className="w-4 h-4" />
+                    إحالة
+                  </Button>
+                )}
+                {type === "incoming" && (
                   <>
                     <Button
-                      variant="outline"
-                      className="gap-2 text-primary border-primary hover:bg-primary hover:text-primary-foreground"
-                      onClick={() => navigate(`/transactions/create?replyTo=${transaction.transaction_id}`)}
+                      variant="default"
+                      className="gap-2 bg-green-600 hover:bg-green-700"
+                      onClick={() => handleActionClick("accept")}
                     >
-                      <Reply className="w-4 h-4" />
-                      رد على المعاملة
+                      <Check className="w-4 h-4" />
+                      موافقة
                     </Button>
-
-                    {type === "incoming" && (
-                      <Button
-                        variant="outline"
-                        className="gap-2 text-amber-600 border-amber-600 hover:bg-amber-600 hover:text-white"
-                        onClick={handleReferralClick}
-                      >
-                        <Forward className="w-4 h-4" />
-                        إحالة
-                      </Button>
-                    )}
-
-                    {type === "incoming" && (
-                      <>
-                        <Button
-                          variant="default"
-                          className="gap-2 bg-green-600 hover:bg-green-700"
-                          onClick={() => handleActionClick("accept")}
-                        >
-                          <Check className="w-4 h-4" />
-                          موافقة
-                        </Button>
-                        <Button
-                          variant="destructive"
-                          className="gap-2"
-                          onClick={() => handleActionClick("reject")}
-                        >
-                          <X className="w-4 h-4" />
-                          رفض
-                        </Button>
-                      </>
-                    )}
+                    <Button
+                      variant="destructive"
+                      className="gap-2"
+                      onClick={() => handleActionClick("reject")}
+                    >
+                      <X className="w-4 h-4" />
+                      رفض
+                    </Button>
                   </>
                 )}
               </div>

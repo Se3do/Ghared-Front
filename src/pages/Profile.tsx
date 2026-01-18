@@ -20,6 +20,7 @@ const Profile = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [formData, setFormData] = useState({
+    full_name: "",
     mobile_number: "",
     password: "",
     confirmPassword: "",
@@ -42,6 +43,7 @@ const Profile = () => {
       setProfile(data);
       setFormData((prev) => ({
         ...prev,
+        full_name: data.full_name || "",
         mobile_number: data.mobile_number || "",
       }));
       if (data.profile_picture) {
@@ -74,6 +76,7 @@ const Profile = () => {
     if (isEditMode) {
       // Cancel edit - reset to original values
       setFormData({
+        full_name: profile?.full_name || "",
         mobile_number: profile?.mobile_number || "",
         password: "",
         confirmPassword: "",
@@ -99,7 +102,7 @@ const Profile = () => {
       const formDataToSend = new FormData();
 
       // Always append required fields with camelCase keys
-      formDataToSend.append("fullName", profile?.full_name || "");
+      formDataToSend.append("fullName", formData.full_name || profile?.full_name || "");
       formDataToSend.append("email", profile?.email || "");
       formDataToSend.append("mobileNumber", formData.mobile_number);
 
@@ -258,9 +261,13 @@ const Profile = () => {
                       </Label>
                       <div className="relative">
                         <Input
-                          value={profile?.full_name || ""}
-                          disabled
-                          className="pr-10 text-right bg-muted/50 cursor-not-allowed opacity-75"
+                          value={formData.full_name}
+                          onChange={(e) => handleChange("full_name", e.target.value)}
+                          disabled={!isEditMode}
+                          className={`pr-10 text-right transition-all duration-300 ${isEditMode
+                            ? "border-primary/50 focus:border-primary focus:ring-primary/20"
+                            : "bg-muted/30"
+                            }`}
                           dir="rtl"
                         />
                         <User className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground/50" />
@@ -342,11 +349,11 @@ const Profile = () => {
 
                     {/* New Password - Editable */}
                     <div className="space-y-2">
-                      <Label className="text-right block font-medium">كلمة المرور الجديدة</Label>
+                      <Label className="text-right block font-medium">كلمة المرور </Label>
                       <div className="relative group">
                         <Input
                           type="password"
-                          placeholder="ادخل كلمة المرور الجديدة"
+                          placeholder="ادخل كلمة المرور "
                           value={formData.password}
                           onChange={(e) => handleChange("password", e.target.value)}
                           disabled={!isEditMode}

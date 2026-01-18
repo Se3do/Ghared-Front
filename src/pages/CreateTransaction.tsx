@@ -217,14 +217,6 @@ const CreateTransaction = () => {
   }, [searchParams, draftsData]);
 
   useEffect(() => {
-    const replyTo = searchParams.get("replyTo");
-    if (replyTo) {
-      setTransactionNature("reply");
-      setParentTransactionId(Number(replyTo));
-    }
-  }, [searchParams]);
-
-  useEffect(() => {
     if (transactionNature === "new") {
       setParentTransactionId(null);
     }
