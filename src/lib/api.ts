@@ -281,7 +281,7 @@ export const fetchDeleted = async (): Promise<InboxTransaction[]> => {
 export interface DashboardStats {
   outgoing: number;
   incoming: number;
-  archived: number;
+  deleted: number;
   overdue: number;
 }
 
@@ -299,7 +299,7 @@ export const fetchDashboardStats = async (): Promise<DashboardStats> => {
   return {
     outgoing: sent.length,
     incoming: inbox.length,
-    archived: deleted.length,
+    deleted: deleted.length,
     overdue: 0, // No overdue endpoint available
   };
 };
@@ -484,4 +484,53 @@ export const performTransactionAction = async (
   }
 
   return result;
+};
+
+export const referTransaction = async (
+  transactionId: string,
+  annotation: string,
+  targetDepartmentId: number
+): Promise<ApiResponse<unknown>> => {
+  const token = getToken();
+  if (!token) throw new Error("غير مسجل الدخول");
+
+  const response = await fetch(`${BASE_URL}/api/transactions/${transactionId}/actions`, {
+    method: "POST",
+    headers: authHeaders(),
+    body: JSON.stringify({
+      action_name: "إحالة",
+      annotation,
+      target_department_id: targetDepartmentId,
+    }),
+  });
+
+  if (response.status === 401) {
+    clearAuth();
+    throw new Error("انتهت صلاحية الجلسة");
+  }
+
+  const result = await response.json();
+
+  if (!response.ok) {
+    throw new Error(result.message || "فشل في إحالة المعاملة");
+  }
+
+  return result;
+};
+
+export const fetchDepartments = async (): Promise<DepartmentReceivers[]> => {
+  const token = getToken();
+  if (!token) throw new Error("غير مسجل الدخول");
+
+  const response = await fetch(`${BASE_URL}/api/transactions/form-data`, {
+    headers: authHeaders(),
+  });
+
+  if (response.status === 401) {
+    clearAuth();
+    throw new Error("انتهت صلاحية الجلسة");
+  }
+
+  const result: ApiResponse<FormData> = await response.json();
+  return result.data.receivers || [];
 };

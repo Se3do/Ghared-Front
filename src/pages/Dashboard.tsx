@@ -32,8 +32,8 @@ const Dashboard = () => {
     icon: Mail,
     variant: "default" as const
   }, {
-    title: "الأرشيف",
-    value: statsData?.archived ?? 0,
+    title: "المحذوفة",
+    value: statsData?.deleted ?? 0,
     change: {
       value: 2,
       isPositive: true

@@ -1,5 +1,5 @@
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowRight, Reply, Loader2, FileText, Download, Eye, Check, X, GitBranch, ArrowLeftRight, CircleCheck, CircleX } from "lucide-react";
+import { ArrowRight, Reply, Loader2, FileText, Download, Eye, Check, X, GitBranch, ArrowLeftRight, CircleCheck, CircleX, Forward } from "lucide-react";
 import Header from "@/components/layout/Header";
 import TransactionsSidebar from "@/components/layout/TransactionsSidebar";
 import { Button } from "@/components/ui/button";
@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { useTransactionDetails, useTransactionAttachment } from "@/hooks/useTransactions";
 import { useAuth } from "@/contexts/AuthContext";
 import { useEffect, useState } from "react";
-import { performTransactionAction, TrackingItem } from "@/lib/api";
+import { performTransactionAction, referTransaction, fetchDepartments, TrackingItem, DepartmentReceivers } from "@/lib/api";
 import { toast } from "sonner";
 import {
   Dialog,
@@ -19,6 +19,13 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 const { openAttachment } = useTransactionAttachment();
 
@@ -30,14 +37,53 @@ const TransactionDetail = () => {
   
   const [actionDialogOpen, setActionDialogOpen] = useState(false);
   const [trackingDialogOpen, setTrackingDialogOpen] = useState(false);
+  const [referralDialogOpen, setReferralDialogOpen] = useState(false);
   const [currentAction, setCurrentAction] = useState<"accept" | "reject" | null>(null);
   const [annotation, setAnnotation] = useState("");
+  const [referralAnnotation, setReferralAnnotation] = useState("");
+  const [selectedDepartment, setSelectedDepartment] = useState<string>("");
+  const [departments, setDepartments] = useState<DepartmentReceivers[]>([]);
+  const [isLoadingDepartments, setIsLoadingDepartments] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleActionClick = (action: "accept" | "reject") => {
     setCurrentAction(action);
     setAnnotation("");
     setActionDialogOpen(true);
+  };
+
+  const handleReferralClick = async () => {
+    setReferralDialogOpen(true);
+    setReferralAnnotation("");
+    setSelectedDepartment("");
+    
+    if (departments.length === 0) {
+      setIsLoadingDepartments(true);
+      try {
+        const depts = await fetchDepartments();
+        setDepartments(depts);
+      } catch (error) {
+        toast.error("فشل في تحميل قائمة الأقسام");
+      } finally {
+        setIsLoadingDepartments(false);
+      }
+    }
+  };
+
+  const handleSubmitReferral = async () => {
+    if (!data?.details?.transaction_id || !selectedDepartment) return;
+    
+    setIsSubmitting(true);
+    try {
+      await referTransaction(data.details.transaction_id.toString(), referralAnnotation, parseInt(selectedDepartment));
+      toast.success("تم إحالة المعاملة بنجاح");
+      setReferralDialogOpen(false);
+      refetch();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "حدث خطأ");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleSubmitAction = async () => {
@@ -232,28 +278,48 @@ const TransactionDetail = () => {
                   <ArrowRight className="w-4 h-4" />
                   رجوع
                 </Button>
-                <Button variant="outline" className="gap-2 text-primary border-primary hover:bg-primary hover:text-primary-foreground">
-                  <Reply className="w-4 h-4" />
-                  رد على المعاملة
-                </Button>
-                {type === "incoming" && (
+                {transaction.type_name !== "إقرار" && (
                   <>
                     <Button
-                      variant="default"
-                      className="gap-2 bg-green-600 hover:bg-green-700"
-                      onClick={() => handleActionClick("accept")}
+                      variant="outline"
+                      className="gap-2 text-primary border-primary hover:bg-primary hover:text-primary-foreground"
+                      onClick={() => navigate(`/transactions/create?replyTo=${transaction.transaction_id}`)}
                     >
-                      <Check className="w-4 h-4" />
-                      موافقة
+                      <Reply className="w-4 h-4" />
+                      رد على المعاملة
                     </Button>
-                    <Button
-                      variant="destructive"
-                      className="gap-2"
-                      onClick={() => handleActionClick("reject")}
-                    >
-                      <X className="w-4 h-4" />
-                      رفض
-                    </Button>
+
+                    {type === "incoming" && (
+                      <Button
+                        variant="outline"
+                        className="gap-2 text-amber-600 border-amber-600 hover:bg-amber-600 hover:text-white"
+                        onClick={handleReferralClick}
+                      >
+                        <Forward className="w-4 h-4" />
+                        إحالة
+                      </Button>
+                    )}
+
+                    {type === "incoming" && (
+                      <>
+                        <Button
+                          variant="default"
+                          className="gap-2 bg-green-600 hover:bg-green-700"
+                          onClick={() => handleActionClick("accept")}
+                        >
+                          <Check className="w-4 h-4" />
+                          موافقة
+                        </Button>
+                        <Button
+                          variant="destructive"
+                          className="gap-2"
+                          onClick={() => handleActionClick("reject")}
+                        >
+                          <X className="w-4 h-4" />
+                          رفض
+                        </Button>
+                      </>
+                    )}
                   </>
                 )}
               </div>
@@ -314,6 +380,75 @@ const TransactionDetail = () => {
         </DialogContent>
       </Dialog>
 
+      {/* Referral Dialog */}
+      <Dialog open={referralDialogOpen} onOpenChange={setReferralDialogOpen}>
+        <DialogContent className="sm:max-w-md" dir="rtl">
+          <DialogHeader>
+            <DialogTitle className="text-right flex items-center gap-2 justify-end">
+              <span>إحالة المعاملة</span>
+              <Forward className="w-5 h-5" />
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="department" className="text-right block">
+                القسم المحال إليه
+              </Label>
+              {isLoadingDepartments ? (
+                <div className="flex items-center justify-center py-4">
+                  <Loader2 className="w-6 h-6 animate-spin text-primary" />
+                </div>
+              ) : (
+                <Select value={selectedDepartment} onValueChange={setSelectedDepartment}>
+                  <SelectTrigger className="text-right">
+                    <SelectValue placeholder="اختر القسم" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-popover">
+                    {departments.map((dept) => (
+                      <SelectItem key={dept.department_id} value={dept.department_id.toString()}>
+                        {dept.department_name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="referralAnnotation" className="text-right block">
+                ملاحظات الإحالة
+              </Label>
+              <Textarea
+                id="referralAnnotation"
+                value={referralAnnotation}
+                onChange={(e) => setReferralAnnotation(e.target.value)}
+                placeholder="مثال: إحالة للعميد لاختصاصه"
+                className="text-right min-h-[100px]"
+              />
+            </div>
+          </div>
+          <DialogFooter className="flex gap-2 sm:justify-start">
+            <Button
+              variant="outline"
+              onClick={() => setReferralDialogOpen(false)}
+              disabled={isSubmitting}
+            >
+              إلغاء
+            </Button>
+            <Button
+              onClick={handleSubmitReferral}
+              disabled={isSubmitting || !selectedDepartment}
+              className="bg-amber-600 hover:bg-amber-700"
+            >
+              {isSubmitting ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                "تأكيد الإحالة"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* Tracking Dialog */}
       <Dialog open={trackingDialogOpen} onOpenChange={setTrackingDialogOpen}>
         <DialogContent className="sm:max-w-lg" dir="rtl">
@@ -332,6 +467,8 @@ const TransactionDetail = () => {
                     item.type === "action"
                       ? item.title === "رفض"
                         ? "border-destructive/30 bg-destructive/5"
+                        : item.title === "إحالة"
+                        ? "border-orange-500/30 bg-orange-500/5"
                         : "border-green-500/30 bg-green-500/5"
                       : "border-border bg-muted/30"
                   }`}
@@ -342,6 +479,8 @@ const TransactionDetail = () => {
                       item.type === "action"
                         ? item.title === "رفض"
                           ? "bg-destructive/10 text-destructive"
+                          : item.title === "إحالة"
+                          ? "bg-orange-500/10 text-orange-600"
                           : "bg-green-500/10 text-green-600"
                         : "bg-primary/10 text-primary"
                     }`}
@@ -350,6 +489,8 @@ const TransactionDetail = () => {
                       <ArrowLeftRight className="w-5 h-5" />
                     ) : item.title === "رفض" ? (
                       <CircleX className="w-5 h-5" />
+                    ) : item.title === "إحالة" ? (
+                      <Forward className="w-5 h-5" />
                     ) : (
                       <CircleCheck className="w-5 h-5" />
                     )}
@@ -371,6 +512,8 @@ const TransactionDetail = () => {
                           item.type === "action"
                             ? item.title === "رفض"
                               ? "bg-destructive"
+                              : item.title === "إحالة"
+                              ? "bg-orange-500"
                               : "bg-green-600"
                             : ""
                         }
